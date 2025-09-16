@@ -26,7 +26,7 @@ func New(log *zap.Logger) infra.Database {
 	}
 }
 
-func (db *inmemRepo) Create(ctx context.Context, event *models.Event) error {
+func (db *inmemRepo) Create(_ context.Context, event *models.Event) error {
 	if event == nil {
 		return errNilEvent
 	}
@@ -42,7 +42,7 @@ func (db *inmemRepo) Create(ctx context.Context, event *models.Event) error {
 	return nil
 }
 
-func (db *inmemRepo) Read(ctx context.Context, eventID string) (*models.Event, error) {
+func (db *inmemRepo) Read(_ context.Context, eventID string) (*models.Event, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
@@ -54,7 +54,7 @@ func (db *inmemRepo) Read(ctx context.Context, eventID string) (*models.Event, e
 	return &evnt, nil
 }
 
-func (db *inmemRepo) Update(ctx context.Context, event *models.Event) error {
+func (db *inmemRepo) Update(_ context.Context, event *models.Event) error {
 	if event == nil {
 		return errNilEvent
 	}
@@ -71,7 +71,7 @@ func (db *inmemRepo) Update(ctx context.Context, event *models.Event) error {
 	return nil
 }
 
-func (db *inmemRepo) Delete(ctx context.Context, eventID string) (bool, error) {
+func (db *inmemRepo) Delete(_ context.Context, eventID string) (bool, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -85,7 +85,7 @@ func (db *inmemRepo) Delete(ctx context.Context, eventID string) (bool, error) {
 	return true, nil
 }
 
-func (db *inmemRepo) ListByTimeRange(ctx context.Context, userID int64, tr infra.TimeRange) ([]models.Event, error) {
+func (db *inmemRepo) ListByTimeRange(_ context.Context, userID int64, tr infra.TimeRange) ([]models.Event, error) {
 	from := time.Date(tr.From.Year(), tr.From.Month(), tr.From.Day(), 0, 0, 0, 0, time.UTC)
 	to := time.Date(tr.To.Year(), tr.To.Month(), tr.To.Day(), 0, 0, 0, 0, time.UTC)
 

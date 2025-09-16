@@ -10,8 +10,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/sunr3d/simple-http-calendar/internal/config"
+	httphandlers "github.com/sunr3d/simple-http-calendar/internal/handlers/http"
+	"github.com/sunr3d/simple-http-calendar/internal/infra/inmem"
 	"github.com/sunr3d/simple-http-calendar/internal/middleware"
 	"github.com/sunr3d/simple-http-calendar/internal/server"
+	"github.com/sunr3d/simple-http-calendar/internal/services/calendarsvc"
 )
 
 func Run(cfg *config.Config, logger *zap.Logger) error {
@@ -20,12 +23,14 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	/// TODO: Инфра слой - инмем БД (мапа)
+	/// Инфра слой
+	repo := inmem.New(logger)
 
-	/// TODO: Сервисный слой
+	/// Сервисный слой
+	svc := calendarsvc.New(repo, logger)
 
-	/// TODO: HTTP слой
-	controller := http_handlers.New(svc, logger)
+	/// HTTP слой
+	controller := httphandlers.New(svc, logger)
 	mux := http.NewServeMux()
 	controller.RegisterCalendarHandlers(mux)
 

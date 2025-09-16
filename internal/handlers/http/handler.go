@@ -1,26 +1,27 @@
-package http_handlers
+package httphandlers
 
 import (
 	"net/http"
 
 	"go.uber.org/zap"
+
+	"github.com/sunr3d/simple-http-calendar/internal/interfaces/services"
 )
 
-type httpHandler struct {
+type Handler struct {
 	svc    services.CalendarService
 	logger *zap.Logger
 }
 
-func New(svc services.CalendarService, logger *zap.Logger) *httpHandler {
-	return &httpHandler{svc: svc, logger: logger}
+func New(svc services.CalendarService, logger *zap.Logger) *Handler {
+	return &Handler{svc: svc, logger: logger}
 }
 
-// FIXME: здесь наверное нужно будет что-то починить в запросах, пока "черновик"
-func (h *httpHandler) RegisterCalendarHandlers(mux *http.ServeMux) {
+func (h *Handler) RegisterCalendarHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("POST /create_event", h.createEvent)
-	mux.HandleFunc("POST /update_event/{event_id}", h.updateEvent)
-	mux.HandleFunc("POST /delete_event/{event_id}", h.deleteEvent)
-	mux.HandleFunc("GET /events_for_day/{date}", h.getDayEvents)
-	mux.HandleFunc("GET /events_for_week/{date}", h.getWeekEvents)
-	mux.HandleFunc("GET /events_for_month/{date}", h.getMonthEvents)
+	mux.HandleFunc("POST /update_event", h.updateEvent)
+	mux.HandleFunc("POST /delete_event", h.deleteEvent)
+	mux.HandleFunc("GET /events_for_day", h.getDayEvents)
+	mux.HandleFunc("GET /events_for_week", h.getWeekEvents)
+	mux.HandleFunc("GET /events_for_month", h.getMonthEvents)
 }

@@ -1,4 +1,4 @@
-package calendar_service
+package calendarsvc
 
 import (
 	"context"

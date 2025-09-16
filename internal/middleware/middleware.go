@@ -31,8 +31,11 @@ func JSONValidator(log *zap.Logger) func(http.Handler) http.Handler {
 			switch r.Method {
 			case http.MethodPost, http.MethodPut, http.MethodPatch:
 				ct := strings.ToLower(strings.TrimSpace(r.Header.Get("Content-Type")))
-				if !httpx.IsJSON(ct) {
-					if err := httpx.HttpError(w, http.StatusUnsupportedMediaType, "Ожидается Content-Type: application/json"); err != nil {
+				if !httpx.IsJSON(ct) && !strings.HasPrefix(ct, "application/x-www-form-urlencoded") {
+					if err := httpx.HTTPError(
+						w,
+						http.StatusUnsupportedMediaType,
+						"Ожидается Content-Type: application/json или application/x-www-form-urlencoded"); err != nil {
 						log.Warn("JSONValidator: не удалось записать ошибку",
 							zap.Error(err),
 							zap.String("method", r.Method),
@@ -59,7 +62,10 @@ func Recovery(log *zap.Logger) func(http.Handler) http.Handler {
 						zap.String("url", r.URL.Path),
 						zap.String("method", r.Method),
 					)
-					if err := httpx.HttpError(w, http.StatusInternalServerError, "Внутренняя ошибка сервера"); err != nil {
+					if err := httpx.HTTPError(
+						w,
+						http.StatusInternalServerError,
+						"Внутренняя ошибка сервера"); err != nil {
 						log.Warn("recovery: не удалось записать ошибку в ответ",
 							zap.Error(err),
 							zap.String("method", r.Method),

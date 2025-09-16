@@ -3,7 +3,7 @@ package config
 import "time"
 
 type Config struct {
-	HTTPPort    string        `envconfig:"HTTP_PORT" default:"8080"`
-	HTTPTimeout time.Duration `envconfig:"HTTP_TIMEOUT" default:"20s"`
-	LogLevel    string        `envconfig:"LOG_LEVEL" default:"info"`
+	HTTPPort    string        `default:"8080" envconfig:"HTTP_PORT"`
+	HTTPTimeout time.Duration `default:"20s"  envconfig:"HTTP_TIMEOUT"`
+	LogLevel    string        `default:"info" envconfig:"LOG_LEVEL"`
 }

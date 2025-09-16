@@ -25,6 +25,6 @@ func New(logLevel string) *zap.Logger {
 	if err != nil {
 		log.Fatalf("не удалось создать логгер: %v\n", err)
 	}
-	
+
 	return logger
 }

@@ -33,6 +33,6 @@ func WriteJSON(w http.ResponseWriter, code int, v any) error {
 	return nil
 }
 
-func HttpError(w http.ResponseWriter, code int, message string) error {
+func HTTPError(w http.ResponseWriter, code int, message string) error {
 	return WriteJSON(w, code, map[string]string{"error": message})
 }

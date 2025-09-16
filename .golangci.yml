@@ -1,0 +1,37 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - gosec
+    - revive # golint deprecated, используем revive вместо него
+    - staticcheck
+    - ineffassign
+    - gocritic
+    - gocognit
+    - copyloopvar
+    - dupl
+    - errcheck
+    - errname
+    - exptostd
+    - fatcontext
+    - funlen
+    - gochecknoglobals
+    - gocyclo
+    - godot
+    - intrange
+    - mirror
+    - nakedret
+    - nestif
+    - nonamedreturns
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+    - decorder
+    - godox
+    - prealloc
+    - tagalign
+    - gosmopolitan
+    - lll

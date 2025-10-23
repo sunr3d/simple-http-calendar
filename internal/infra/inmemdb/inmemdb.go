@@ -1,4 +1,4 @@
-package inmem
+package inmemdb
 
 import (
 	"context"
@@ -9,6 +9,10 @@ import (
 
 	"github.com/sunr3d/simple-http-calendar/internal/interfaces/infra"
 	"github.com/sunr3d/simple-http-calendar/models"
+)
+
+const (
+	capacity = 8
 )
 
 var _ infra.Database = (*inmemRepo)(nil)
@@ -92,7 +96,7 @@ func (db *inmemRepo) ListByTimeRange(_ context.Context, userID int64, tr infra.T
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	res := make([]models.Event, 0, 8)
+	res := make([]models.Event, 0, capacity)
 	for _, evnt := range db.data {
 		if evnt.UserID == userID {
 			d := time.Date(evnt.Date.Year(), evnt.Date.Month(), evnt.Date.Day(), 0, 0, 0, 0, time.UTC)
@@ -103,4 +107,35 @@ func (db *inmemRepo) ListByTimeRange(_ context.Context, userID int64, tr infra.T
 	}
 
 	return res, nil
+}
+
+func (db *inmemRepo) ListReminders(_ context.Context, now time.Time) ([]models.Event, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	res := make([]models.Event, 0, capacity)
+	for _, evnt := range db.data {
+		if evnt.Reminder && (now.After(evnt.Date) || now.Equal(evnt.Date)) && !evnt.ReminderSent {
+			res = append(res, evnt)
+		}
+	}
+
+	return res, nil
+}
+
+func (db *inmemRepo) UpdateReminderSent(_ context.Context, eventID string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	evnt, exists := db.data[eventID]
+	if !exists {
+		return errNotFound
+	}
+
+	now := time.Now()
+	evnt.ReminderSent = true
+	evnt.ReminderSentAt = &now
+	db.data[eventID] = evnt
+
+	return nil
 }

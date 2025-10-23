@@ -25,12 +25,14 @@ func decodeBody(r *http.Request, dst any) error {
 			payload.UserID = uid
 			payload.Date = strings.TrimSpace(r.Form.Get("date"))
 			payload.Event = r.Form.Get("event")
+			payload.Reminder = r.Form.Get("reminder") == "true"
 		case *updateEventReq:
 			uid, _ := strconv.ParseInt(strings.TrimSpace(r.Form.Get("user_id")), 10, 64)
 			payload.EventID = strings.TrimSpace(r.Form.Get("event_id"))
 			payload.UserID = uid
 			payload.Date = strings.TrimSpace(r.Form.Get("date"))
 			payload.Event = r.Form.Get("event")
+			payload.Reminder = r.Form.Get("reminder") == "true"
 		case *deleteEventReq:
 			payload.EventID = strings.TrimSpace(r.Form.Get("event_id"))
 		default:

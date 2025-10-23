@@ -11,10 +11,12 @@ import (
 
 	"github.com/sunr3d/simple-http-calendar/internal/config"
 	httphandlers "github.com/sunr3d/simple-http-calendar/internal/handlers/http"
-	"github.com/sunr3d/simple-http-calendar/internal/infra/inmem"
+	"github.com/sunr3d/simple-http-calendar/internal/infra/inmembroker"
+	"github.com/sunr3d/simple-http-calendar/internal/infra/inmemdb"
 	"github.com/sunr3d/simple-http-calendar/internal/middleware"
 	"github.com/sunr3d/simple-http-calendar/internal/server"
 	"github.com/sunr3d/simple-http-calendar/internal/services/calendarsvc"
+	"github.com/sunr3d/simple-http-calendar/internal/services/remindersvc"
 )
 
 func Run(cfg *config.Config, logger *zap.Logger) error {
@@ -24,13 +26,15 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	defer stop()
 
 	/// Инфра слой
-	repo := inmem.New(logger)
+	repo := inmemdb.New(logger)
+	broker := inmembroker.New(cfg.ReminderChanSize, logger)
 
 	/// Сервисный слой
-	svc := calendarsvc.New(repo, logger)
+	calSvc := calendarsvc.New(repo, broker, logger)
+	remSvc := remindersvc.New(repo, broker, logger)
 
 	/// HTTP слой
-	controller := httphandlers.New(svc, logger)
+	controller := httphandlers.New(calSvc, logger)
 	mux := http.NewServeMux()
 	controller.RegisterCalendarHandlers(mux)
 
@@ -44,5 +48,6 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	/// TODO: HTTP сервер
 	srv := server.New(cfg.HTTPPort, handler, cfg.HTTPTimeout, logger)
 
+	go remSvc.Start(appCtx, cfg.ReminderInterval)
 	return srv.Start(appCtx)
 }

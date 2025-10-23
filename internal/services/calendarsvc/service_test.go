@@ -8,16 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sunr3d/simple-http-calendar/internal/infra/inmem"
+	"github.com/sunr3d/simple-http-calendar/internal/infra/inmembroker"
+	"github.com/sunr3d/simple-http-calendar/internal/infra/inmemdb"
 	"github.com/sunr3d/simple-http-calendar/models"
 )
 
 func newSvc(t *testing.T) *calendarService {
 	t.Helper()
 
-	repo := inmem.New(nil)
+	repo := inmemdb.New(nil)
+	broker := inmembroker.New(100, nil)
 
-	s := New(repo, nil)
+	s := New(repo, broker, nil)
 	cs, ok := s.(*calendarService)
 
 	require.True(t, ok)

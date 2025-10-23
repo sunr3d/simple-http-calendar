@@ -17,12 +17,14 @@ var _ services.CalendarService = (*calendarService)(nil)
 
 type calendarService struct {
 	repo   infra.Database
+	broker infra.Broker
 	logger *zap.Logger
 }
 
-func New(repo infra.Database, logger *zap.Logger) services.CalendarService {
+func New(repo infra.Database, broker infra.Broker, logger *zap.Logger) services.CalendarService {
 	return &calendarService{
 		repo:   repo,
+		broker: broker,
 		logger: logger,
 	}
 }
@@ -35,18 +37,25 @@ func (s *calendarService) CreateEvent(ctx context.Context, event models.Event) (
 		return "", errEmptyEvent
 	}
 
-	d := time.Date(event.Date.Year(), event.Date.Month(), event.Date.Day(), 0, 0, 0, 0, time.UTC)
+	/* d := time.Date(event.Date.Year(), event.Date.Month(), event.Date.Day(), 0, 0, 0, 0, time.UTC) */
 
 	id := uuid.NewString()
 	newEvent := &models.Event{
-		ID:     id,
-		UserID: event.UserID,
-		Date:   d,
-		Text:   event.Text,
+		ID:       id,
+		UserID:   event.UserID,
+		Date:     event.Date,
+		Text:     event.Text,
+		Reminder: event.Reminder,
 	}
 
 	if err := s.repo.Create(ctx, newEvent); err != nil {
 		return "", fmt.Errorf("repo.Create: %w", err)
+	}
+
+	if newEvent.Reminder {
+		if err := s.broker.Publish(ctx, newEvent); err != nil {
+			return id, fmt.Errorf("broker.Publish: %w", err)
+		}
 	}
 
 	return id, nil
@@ -63,7 +72,7 @@ func (s *calendarService) UpdateEvent(ctx context.Context, event models.Event) e
 		return errEmptyEvent
 	}
 
-	d := time.Date(event.Date.Year(), event.Date.Month(), event.Date.Day(), 0, 0, 0, 0, time.UTC)
+	/* d := time.Date(event.Date.Year(), event.Date.Month(), event.Date.Day(), 0, 0, 0, 0, time.UTC) */
 
 	data, err := s.repo.Read(ctx, event.ID)
 	if err != nil {
@@ -71,8 +80,9 @@ func (s *calendarService) UpdateEvent(ctx context.Context, event models.Event) e
 	}
 
 	data.UserID = event.UserID
-	data.Date = d
+	data.Date = event.Date
 	data.Text = event.Text
+	data.Reminder = event.Reminder
 
 	return s.repo.Update(ctx, data)
 }

@@ -1,4 +1,4 @@
-package inmem
+package inmemdb
 
 import "errors"
 

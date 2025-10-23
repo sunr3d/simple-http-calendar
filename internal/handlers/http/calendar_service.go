@@ -25,13 +25,13 @@ func (h *Handler) createEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	day, err := time.ParseInLocation("2006-01-02", strings.TrimSpace(req.Date), time.UTC)
+	day, err := time.ParseInLocation("2006-01-02T15:04:05", strings.TrimSpace(req.Date), time.Local)
 	if err != nil {
-		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректная дата, ожидается YYYY-MM-DD")
+		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректная дата, ожидается YYYY-MM-DDTHH:MM:SS")
 		return
 	}
 
-	event := models.Event{UserID: req.UserID, Date: day, Text: req.Event}
+	event := models.Event{UserID: req.UserID, Date: day, Text: req.Event, Reminder: req.Reminder}
 	if err := validators.ValidateCreatePayload(event); err != nil {
 		_ = httpx.HTTPError(w, http.StatusBadRequest, err.Error())
 		return
@@ -59,13 +59,13 @@ func (h *Handler) updateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	day, err := time.ParseInLocation("2006-01-02", strings.TrimSpace(req.Date), time.UTC)
+	day, err := time.ParseInLocation("2006-01-02T15:04:05", strings.TrimSpace(req.Date), time.Local)
 	if err != nil {
-		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректная дата, ожидается YYYY-MM-DD")
+		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректная дата, ожидается YYYY-MM-DDTHH:MM:SS")
 		return
 	}
 
-	event := models.Event{ID: req.EventID, UserID: req.UserID, Date: day, Text: req.Event}
+	event := models.Event{ID: req.EventID, UserID: req.UserID, Date: day, Text: req.Event, Reminder: req.Reminder}
 	if err := validators.ValidateUpdate(event); err != nil {
 		_ = httpx.HTTPError(w, http.StatusBadRequest, err.Error())
 		return

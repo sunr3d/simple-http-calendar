@@ -33,7 +33,8 @@ func New(port string, handler http.Handler, timeout time.Duration, logger *zap.L
 
 func (s *Server) Start(ctx context.Context) error {
 	logger := s.logger.With(
-		zap.String("op", "server.Start"),
+		zap.String("service", "server"),
+		zap.String("op", "Start"),
 	)
 
 	logger.Info("запуск HTTP сервера",

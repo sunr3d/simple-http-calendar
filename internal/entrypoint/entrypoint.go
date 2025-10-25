@@ -25,6 +25,7 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 
 	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	defer logger.Sync()
 
 	/// Инфра слой
 	repo := inmemdb.New(logger)

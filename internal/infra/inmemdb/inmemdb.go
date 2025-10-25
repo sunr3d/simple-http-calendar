@@ -11,10 +11,6 @@ import (
 	"github.com/sunr3d/simple-http-calendar/models"
 )
 
-const (
-	capacity = 8
-)
-
 var _ infra.Database = (*inmemRepo)(nil)
 
 type inmemRepo struct {
@@ -122,34 +118,3 @@ func (db *inmemRepo) List(_ context.Context, opts *infra.ListOptions) ([]models.
 
 	return res, nil
 }
-
-// func (db *inmemRepo) ListReminders(_ context.Context, now time.Time) ([]models.Event, error) {
-// 	db.mu.RLock()
-// 	defer db.mu.RUnlock()
-
-// 	res := make([]models.Event, 0, capacity)
-// 	for _, evnt := range db.data {
-// 		if evnt.Reminder && (now.After(evnt.Date) || now.Equal(evnt.Date)) && !evnt.ReminderSent {
-// 			res = append(res, evnt)
-// 		}
-// 	}
-
-// 	return res, nil
-// }
-
-// func (db *inmemRepo) UpdateReminderSent(_ context.Context, eventID string) error {
-// 	db.mu.Lock()
-// 	defer db.mu.Unlock()
-
-// 	evnt, exists := db.data[eventID]
-// 	if !exists {
-// 		return errNotFound
-// 	}
-
-// 	now := time.Now()
-// 	evnt.ReminderSent = true
-// 	evnt.ReminderSentAt = &now
-// 	db.data[eventID] = evnt
-
-// 	return nil
-// }

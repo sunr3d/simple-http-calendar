@@ -32,7 +32,12 @@ func New(repo infra.Database, logger *zap.Logger, cfg config.ArchiverConfig) ser
 // Start - запуск сервиса архивации.
 // По таймеру проверяет и архивирует события, которые уже прошли.
 func (s *archiveSvc) Start(ctx context.Context) error {
-	s.logger.Info("запуск сервиса архивации...",
+	logger := s.logger.With(
+		zap.String("service", "archiver"),
+		zap.String("op", "Start"),
+	)
+
+	logger.Info("запуск сервиса архивации...",
 		zap.Duration("interval", s.interval),
 	)
 
@@ -43,11 +48,11 @@ func (s *archiveSvc) Start(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			if err := s.archiveOldEvents(ctx); err != nil {
-				s.logger.Warn("ошибка при архивации событий", zap.Error(err))
+				logger.Warn("ошибка при архивации событий", zap.Error(err))
 				continue
 			}
 		case <-ctx.Done():
-			s.logger.Info("отмена контекста, сервис архивации остановлен")
+			logger.Info("отмена контекста, сервис архивации остановлен")
 			return ctx.Err()
 		}
 	}
@@ -55,6 +60,11 @@ func (s *archiveSvc) Start(ctx context.Context) error {
 
 // archiveOldEvents - архивирует события, которые уже прошли.
 func (s *archiveSvc) archiveOldEvents(ctx context.Context) error {
+	logger := s.logger.With(
+		zap.String("service", "archiver"),
+		zap.String("op", "archiveOldEvents"),
+	)
+
 	archived := false
 	events, err := s.repo.List(ctx, &infra.ListOptions{
 		Archived: &archived,
@@ -68,11 +78,12 @@ func (s *archiveSvc) archiveOldEvents(ctx context.Context) error {
 		if event.Date.Before(now) {
 			event.Archived = true
 			if err := s.repo.Update(ctx, &event); err != nil {
-				s.logger.Warn("ошибка при архивации события",
+				logger.Warn("ошибка при архивации события",
 					zap.String("event_id", event.ID),
 					zap.Error(err))
 				continue
 			}
+			logger.Info("событие архивировано", zap.String("event_id", event.ID))
 		}
 	}
 

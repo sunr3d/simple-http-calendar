@@ -33,7 +33,11 @@ func New(repo infra.Database, broker infra.Broker, logger *zap.Logger) services.
 // Подписывается на канал событий брокера и проверяет ожидающие напоминания.
 // Есть фоллбэк на случай, если событие уже в прошлом, то оно отправляется сразу.
 func (s *reminderSvc) Start(ctx context.Context, interval time.Duration) error {
-	s.logger.Info("запуск сервиса напоминаний...",
+	logger := s.logger.With(
+		zap.String("service", "reminder"),
+		zap.String("op", "Start"),
+	)
+	logger.Info("запуск сервиса напоминаний...",
 		zap.Duration("interval", interval),
 	)
 
@@ -48,11 +52,11 @@ func (s *reminderSvc) Start(ctx context.Context, interval time.Duration) error {
 		select {
 		case <-ticker.C:
 			if err := s.checkPendingReminders(ctx); err != nil {
-				s.logger.Warn("ошибка при проверке ожидающих напоминаний", zap.Error(err))
+				logger.Warn("ошибка при проверке ожидающих напоминаний", zap.Error(err))
 				continue
 			}
 		case <-ctx.Done():
-			s.logger.Info("отмена контекста, сервис напоминаний остановлен")
+			logger.Info("отмена контекста, сервис напоминаний остановлен")
 			return ctx.Err()
 		}
 	}
@@ -89,6 +93,11 @@ func (s *reminderSvc) handleReminder(ctx context.Context, event *models.Event) e
 // Если событие уже в прошлом или сейчас время совпадает с временем события,
 // то напоминание отправляется сразу, а статус отправки напоминания устанавливается в true.
 func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
+	logger := s.logger.With(
+		zap.String("service", "reminder"),
+		zap.String("op", "checkPendingReminders"),
+	)
+
 	reminderSent := false
 	events, err := s.repo.List(ctx, &infra.ListOptions{
 		ReminderSent: &reminderSent,
@@ -107,7 +116,7 @@ func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
 			event.ReminderSentAt = &sentAt
 
 			if err := s.repo.Update(ctx, &event); err != nil {
-				s.logger.Warn("ошибка при обновлении статуса напоминания в БД", zap.Error(err))
+				logger.Warn("ошибка при обновлении статуса напоминания в БД", zap.Error(err))
 				continue
 			}
 
@@ -120,13 +129,18 @@ func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
 
 // sendReminder - отправляет напоминание.
 func (s *reminderSvc) sendReminder(ctx context.Context, event *models.Event) {
+	logger := s.logger.With(
+		zap.String("service", "reminder"),
+		zap.String("op", "sendReminder"),
+	)
+
 	select {
 	case <-ctx.Done():
 		return
 	default:
 	}
 
-	s.logger.Info("отправлено напоминание",
+	logger.Info("отправлено напоминание",
 		zap.Int64("user_id", event.UserID),
 		zap.String("event_id", event.ID),
 		zap.String("event", event.Text),

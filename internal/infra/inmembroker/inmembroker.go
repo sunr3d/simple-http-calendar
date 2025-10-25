@@ -25,9 +25,14 @@ func New(chanSize int, logger *zap.Logger) infra.Broker {
 }
 
 func (b *inmemBroker) Publish(ctx context.Context, event *models.Event) error {
+	logger := b.logger.With(
+		zap.String("service", "inmembroker"),
+		zap.String("op", "Publish"),
+	)
+
 	select {
 	case b.eventChan <- event:
-		b.logger.Info("событие успешно отправлено в брокер",
+		logger.Info("событие успешно отправлено в брокер",
 			zap.String("event_id", event.ID),
 			zap.Int64("user_id", event.UserID),
 			zap.String("event", event.Text),
@@ -37,18 +42,22 @@ func (b *inmemBroker) Publish(ctx context.Context, event *models.Event) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		b.logger.Warn("брокер переполнен, событие не может быть отправлено")
+		logger.Warn("брокер переполнен, событие не может быть отправлено")
 		return nil
 	}
 }
 
 func (b *inmemBroker) Subscribe(ctx context.Context, handler func(ctx context.Context, event *models.Event) error) error {
-	b.logger.Info("запуск подписки на события брокера")
+	logger := b.logger.With(
+		zap.String("service", "inmembroker"),
+		zap.String("op", "Subscribe"),
+	)
+	logger.Info("запуск подписки на события брокера")
 
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				b.logger.Error("паника в горутине подписки на события брокера",
+				logger.Error("паника в горутине подписки на события брокера",
 					zap.Any("rec", r),
 					zap.String("stack", string(debug.Stack())),
 				)
@@ -58,17 +67,17 @@ func (b *inmemBroker) Subscribe(ctx context.Context, handler func(ctx context.Co
 		for {
 			select {
 			case event := <-b.eventChan:
-				b.logger.Info("получено событие из брокера",
+				logger.Info("получено событие из брокера",
 					zap.String("event_id", event.ID),
 				)
 				if err := handler(ctx, event); err != nil {
-					b.logger.Error("ошибка при обработке события",
+					logger.Error("ошибка при обработке события",
 						zap.Error(err),
 						zap.String("event_id", event.ID),
 					)
 				}
 			case <-ctx.Done():
-				b.logger.Info("контекст завершен, завершение подписки на события брокера")
+				logger.Info("контекст завершен, завершение подписки на события брокера")
 				return
 			}
 		}

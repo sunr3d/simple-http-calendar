@@ -14,9 +14,12 @@ func main() {
 		log.Fatalf("ошибка при загрузке конфигруации: %v\n", err)
 	}
 
-	zapLogger := logger.New(cfg.LogLevel)
+	asyncLogger, err := logger.New(cfg.LoggerCfg)
+	if err != nil {
+		log.Fatalf("ошибка при создании логгера: %v\n", err)
+	}
 
-	if err = entrypoint.Run(cfg, zapLogger); err != nil {
+	if err = entrypoint.Run(cfg, asyncLogger); err != nil {
 		log.Fatalf("ошибка при запуске приложения: %v\n", err)
 	}
 }

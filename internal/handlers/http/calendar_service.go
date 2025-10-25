@@ -2,6 +2,7 @@ package httphandlers
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,22 +28,26 @@ func (h *Handler) createEvent(w http.ResponseWriter, r *http.Request) {
 
 	day, err := time.ParseInLocation("2006-01-02T15:04:05", strings.TrimSpace(req.Date), time.Local)
 	if err != nil {
+		logger.Warn("некорректная дата", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректная дата, ожидается YYYY-MM-DDTHH:MM:SS")
 		return
 	}
 
 	event := models.Event{UserID: req.UserID, Date: day, Text: req.Event, Reminder: req.Reminder}
 	if err := validators.ValidateCreatePayload(event); err != nil {
+		logger.Warn("некорректные данные события", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	id, err := h.svc.CreateEvent(r.Context(), event)
 	if err != nil {
+		logger.Warn("ошибка при создании события", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
+	logger.Info("событие успешно создано", zap.String("event_id", id))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": id})
 }
 
@@ -61,21 +66,25 @@ func (h *Handler) updateEvent(w http.ResponseWriter, r *http.Request) {
 
 	day, err := time.ParseInLocation("2006-01-02T15:04:05", strings.TrimSpace(req.Date), time.Local)
 	if err != nil {
+		logger.Warn("некорректная дата", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректная дата, ожидается YYYY-MM-DDTHH:MM:SS")
 		return
 	}
 
 	event := models.Event{ID: req.EventID, UserID: req.UserID, Date: day, Text: req.Event, Reminder: req.Reminder}
 	if err := validators.ValidateUpdate(event); err != nil {
+		logger.Warn("некорректные данные события", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := h.svc.UpdateEvent(r.Context(), event); err != nil {
+		logger.Warn("ошибка при обновлении события", zap.String("event_id", req.EventID), zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
+	logger.Info("событие успешно обновлено", zap.String("event_id", req.EventID))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": "ok"})
 }
 
@@ -93,15 +102,18 @@ func (h *Handler) deleteEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validators.ValidateDelete(req.EventID); err != nil {
+		logger.Warn("некорректные данные события", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := h.svc.DeleteEvent(r.Context(), req.EventID); err != nil {
+		logger.Warn("ошибка при удалении события", zap.String("event_id", req.EventID), zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
+	logger.Info("событие успешно удалено", zap.String("event_id", req.EventID))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": "ok"})
 }
 
@@ -112,16 +124,19 @@ func (h *Handler) getDayEvents(w http.ResponseWriter, r *http.Request) {
 
 	filter, ok := parseQuery(r)
 	if !ok {
+		logger.Warn("некорректный запрос")
 		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректный запрос")
 		return
 	}
 
 	events, err := h.svc.GetEventsForDay(r.Context(), filter.UserID, filter.Day)
 	if err != nil {
+		logger.Warn("ошибка при получении событий за день", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
+	logger.Info("события за день успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": events})
 }
 
@@ -132,16 +147,19 @@ func (h *Handler) getWeekEvents(w http.ResponseWriter, r *http.Request) {
 
 	filter, ok := parseQuery(r)
 	if !ok {
+		logger.Warn("некорректный запрос")
 		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректный запрос")
 		return
 	}
 
 	events, err := h.svc.GetEventsForWeek(r.Context(), filter.UserID, filter.Day)
 	if err != nil {
+		logger.Warn("ошибка при получении событий за неделю", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
+	logger.Info("события за неделю успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": events})
 }
 
@@ -152,15 +170,18 @@ func (h *Handler) getMonthEvents(w http.ResponseWriter, r *http.Request) {
 
 	filter, ok := parseQuery(r)
 	if !ok {
+		logger.Warn("некорректный запрос")
 		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректный запрос")
 		return
 	}
 
 	events, err := h.svc.GetEventsForMonth(r.Context(), filter.UserID, filter.Day)
 	if err != nil {
+		logger.Warn("ошибка при получении событий за месяц", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
+	logger.Info("события за месяц успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": events})
 }

@@ -29,8 +29,8 @@ func NewAsyncWriter(output, fallback zapcore.WriteSyncer, chanSize int) zapcore.
 }
 
 // Write - пишет данные в канал асинхронного логгера с выводом на фоллбэк на случай переполнения канала.
-// (реализация io.Writer)
-func (w *asyncWriter) Write(p []byte) (n int, err error) {
+// (реализация io.Writer).
+func (w *asyncWriter) Write(p []byte) (int, error) {
 	buf := make([]byte, len(p))
 	copy(buf, p)
 
@@ -50,7 +50,7 @@ func (w *asyncWriter) Write(p []byte) (n int, err error) {
 
 // Sync - функция синхронизации асинхронного логгера при graceful shutdown.
 // Закрывает канал и выводит оставшиеся данные из канала в фоллбэк.
-// (реализация zapcore.WriteSyncer)
+// (реализация zapcore.WriteSyncer).
 func (w *asyncWriter) Sync() error {
 	w.once.Do(func() {
 		close(w.writeChan)

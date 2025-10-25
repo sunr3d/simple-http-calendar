@@ -47,7 +47,10 @@ func (b *inmemBroker) Publish(ctx context.Context, event *models.Event) error {
 	}
 }
 
-func (b *inmemBroker) Subscribe(ctx context.Context, handler func(ctx context.Context, event *models.Event) error) error {
+func (b *inmemBroker) Subscribe(
+	ctx context.Context,
+	handler func(ctx context.Context, event *models.Event) error,
+) error {
 	logger := b.logger.With(
 		zap.String("service", "inmembroker"),
 		zap.String("op", "Subscribe"),

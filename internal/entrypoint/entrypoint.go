@@ -2,9 +2,12 @@ package entrypoint
 
 import (
 	"context"
+	"errors"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"go.uber.org/zap"
@@ -25,7 +28,13 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 
 	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	defer logger.Sync()
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			if !strings.Contains(err.Error(), "invalid argument") {
+				log.Printf("ошибка при синхронизации и остановке логгера: %v\n", err)
+			}
+		}
+	}()
 
 	/// Инфра слой
 	repo := inmemdb.New(logger)
@@ -52,8 +61,20 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 	srv := server.New(cfg.HTTPPort, handler, cfg.HTTPTimeout, logger)
 
 	// Запуск сервисов и сервера
-	go remSvc.Start(appCtx, cfg.ReminderCfg.Interval)
-	go archSvc.Start(appCtx)
+	go func() {
+		if err := remSvc.Start(appCtx, cfg.ReminderCfg.Interval); err != nil {
+			if !errors.Is(err, context.Canceled) {
+				log.Printf("ошибка в работе сервиса напоминаний: %v\n", err)
+			}
+		}
+	}()
+	go func() {
+		if err := archSvc.Start(appCtx); err != nil {
+			if !errors.Is(err, context.Canceled) {
+				log.Printf("ошибка в работе сервиса архивации: %v\n", err)
+			}
+		}
+	}()
 
 	return srv.Start(appCtx)
 }

@@ -1,6 +1,8 @@
 package httphandlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -118,55 +120,24 @@ func (h *Handler) deleteEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getDayEvents(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.With(zap.String("component", "handler"), zap.String("op", "GetDayEvents"))
-
-	logger.Info("получен запрос на получение событий за день")
-
-	filter, ok := parseQuery(r)
-	if !ok {
-		logger.Warn("некорректный запрос")
-		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректный запрос")
-		return
-	}
-
-	events, err := h.svc.GetEventsForDay(r.Context(), filter.UserID, filter.Day)
-	if err != nil {
-		logger.Warn("ошибка при получении событий за день", zap.Error(err))
-		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
-		return
-	}
-
-	logger.Info("события за день успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
-	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": events})
+	h.getEvents(w, r, "GetDayEvents", h.svc.GetEventsForDay)
 }
 
 func (h *Handler) getWeekEvents(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.With(zap.String("component", "handler"), zap.String("op", "GetWeekEvents"))
-
-	logger.Info("получен запрос на получение событий за неделю")
-
-	filter, ok := parseQuery(r)
-	if !ok {
-		logger.Warn("некорректный запрос")
-		_ = httpx.HTTPError(w, http.StatusBadRequest, "Некорректный запрос")
-		return
-	}
-
-	events, err := h.svc.GetEventsForWeek(r.Context(), filter.UserID, filter.Day)
-	if err != nil {
-		logger.Warn("ошибка при получении событий за неделю", zap.Error(err))
-		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
-		return
-	}
-
-	logger.Info("события за неделю успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
-	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": events})
+	h.getEvents(w, r, "GetWeekEvents", h.svc.GetEventsForWeek)
 }
 
 func (h *Handler) getMonthEvents(w http.ResponseWriter, r *http.Request) {
-	logger := h.logger.With(zap.String("component", "handler"), zap.String("op", "GetMonthEvents"))
+	h.getEvents(w, r, "GetMonthEvents", h.svc.GetEventsForMonth)
+}
 
-	logger.Info("получен запрос на получение событий за месяц")
+func (h *Handler) getEvents(
+	w http.ResponseWriter,
+	r *http.Request,
+	op string,
+	eventsFunc func(context.Context, int64, time.Time) ([]models.Event, error),
+) {
+	logger := h.logger.With(zap.String("component", "handler"), zap.String("op", op))
 
 	filter, ok := parseQuery(r)
 	if !ok {
@@ -175,13 +146,19 @@ func (h *Handler) getMonthEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := h.svc.GetEventsForMonth(r.Context(), filter.UserID, filter.Day)
+	logger.Info(
+		fmt.Sprintf("получен запрос на получение событий %s для пользователя %d",
+			op,
+			filter.UserID),
+	)
+
+	events, err := eventsFunc(r.Context(), filter.UserID, filter.Day)
 	if err != nil {
-		logger.Warn("ошибка при получении событий за месяц", zap.Error(err))
+		logger.Warn("ошибка при получении событий", zap.Error(err))
 		_ = httpx.HTTPError(w, http.StatusServiceUnavailable, "Сервис недоступен")
 		return
 	}
 
-	logger.Info("события за месяц успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
+	logger.Info("события успешно получены", zap.String("user_id", strconv.FormatInt(filter.UserID, 10)))
 	_ = httpx.WriteJSON(w, http.StatusOK, map[string]any{"result": events})
 }

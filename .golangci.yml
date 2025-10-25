@@ -35,3 +35,11 @@ linters:
     - tagalign
     - gosmopolitan
     - lll
+
+linters-settings:
+  gosmopolitan:
+    allow-time-local: true
+
+issues:
+  exclude-files:
+    - ".*_test.go$"

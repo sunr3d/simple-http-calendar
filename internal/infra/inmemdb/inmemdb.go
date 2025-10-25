@@ -91,30 +91,54 @@ func (db *inmemRepo) List(_ context.Context, opts *infra.ListOptions) ([]models.
 
 	res := make([]models.Event, 0, len(db.data))
 	for _, evnt := range db.data {
-		if opts != nil {
-			if opts.UserID != nil && evnt.UserID != *opts.UserID {
-				continue
-			}
-			if opts.Archived != nil && evnt.Archived != *opts.Archived {
-				continue
-			}
-
-			if opts.From != nil {
-				eventDay := time.Date(evnt.Date.Year(), evnt.Date.Month(), evnt.Date.Day(), 0, 0, 0, 0, time.Local)
-				if eventDay.Before(*opts.From) {
-					continue
-				}
-			}
-			if opts.To != nil {
-				eventDay := time.Date(evnt.Date.Year(), evnt.Date.Month(), evnt.Date.Day(), 0, 0, 0, 0, time.Local)
-				if eventDay.After(*opts.To) {
-					continue
-				}
-			}
+		if !db.matchesFilter(evnt, opts) {
+			continue
 		}
 
 		res = append(res, evnt)
 	}
 
 	return res, nil
+}
+
+func (db *inmemRepo) matchesFilter(evnt models.Event, opts *infra.ListOptions) bool {
+	if opts == nil {
+		return true
+	}
+
+	if opts.UserID != nil && evnt.UserID != *opts.UserID {
+		return false
+	}
+
+	if opts.Archived != nil && evnt.Archived != *opts.Archived {
+		return false
+	}
+
+	if opts.From != nil {
+		eventDay := time.Date(
+			evnt.Date.Year(),
+			evnt.Date.Month(),
+			evnt.Date.Day(),
+			0, 0, 0, 0,
+			time.Local,
+		)
+		if eventDay.Before(*opts.From) {
+			return false
+		}
+	}
+
+	if opts.To != nil {
+		eventDay := time.Date(
+			evnt.Date.Year(),
+			evnt.Date.Month(),
+			evnt.Date.Day(),
+			0, 0, 0, 0,
+			time.Local,
+		)
+		if eventDay.After(*opts.To) {
+			return false
+		}
+	}
+
+	return true
 }

@@ -89,53 +89,67 @@ func (db *inmemRepo) Delete(_ context.Context, eventID string) (bool, error) {
 	return true, nil
 }
 
-func (db *inmemRepo) ListByTimeRange(_ context.Context, userID int64, tr infra.TimeRange) ([]models.Event, error) {
-	from := time.Date(tr.From.Year(), tr.From.Month(), tr.From.Day(), 0, 0, 0, 0, time.UTC)
-	to := time.Date(tr.To.Year(), tr.To.Month(), tr.To.Day(), 0, 0, 0, 0, time.UTC)
-
+func (db *inmemRepo) List(_ context.Context, opts *infra.ListOptions) ([]models.Event, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	res := make([]models.Event, 0, capacity)
+	res := make([]models.Event, 0, len(db.data))
 	for _, evnt := range db.data {
-		if evnt.UserID == userID {
-			d := time.Date(evnt.Date.Year(), evnt.Date.Month(), evnt.Date.Day(), 0, 0, 0, 0, time.UTC)
-			if !d.Before(from) && !d.After(to) {
-				res = append(res, evnt)
+		if opts != nil {
+			if opts.UserID != nil && evnt.UserID != *opts.UserID {
+				continue
+			}
+			if opts.Archived != nil && evnt.Archived != *opts.Archived {
+				continue
+			}
+
+			if opts.From != nil {
+				eventDay := time.Date(evnt.Date.Year(), evnt.Date.Month(), evnt.Date.Day(), 0, 0, 0, 0, time.Local)
+				if eventDay.Before(*opts.From) {
+					continue
+				}
+			}
+			if opts.To != nil {
+				eventDay := time.Date(evnt.Date.Year(), evnt.Date.Month(), evnt.Date.Day(), 0, 0, 0, 0, time.Local)
+				if eventDay.After(*opts.To) {
+					continue
+				}
 			}
 		}
+
+		res = append(res, evnt)
 	}
 
 	return res, nil
 }
 
-func (db *inmemRepo) ListReminders(_ context.Context, now time.Time) ([]models.Event, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+// func (db *inmemRepo) ListReminders(_ context.Context, now time.Time) ([]models.Event, error) {
+// 	db.mu.RLock()
+// 	defer db.mu.RUnlock()
 
-	res := make([]models.Event, 0, capacity)
-	for _, evnt := range db.data {
-		if evnt.Reminder && (now.After(evnt.Date) || now.Equal(evnt.Date)) && !evnt.ReminderSent {
-			res = append(res, evnt)
-		}
-	}
+// 	res := make([]models.Event, 0, capacity)
+// 	for _, evnt := range db.data {
+// 		if evnt.Reminder && (now.After(evnt.Date) || now.Equal(evnt.Date)) && !evnt.ReminderSent {
+// 			res = append(res, evnt)
+// 		}
+// 	}
 
-	return res, nil
-}
+// 	return res, nil
+// }
 
-func (db *inmemRepo) UpdateReminderSent(_ context.Context, eventID string) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+// func (db *inmemRepo) UpdateReminderSent(_ context.Context, eventID string) error {
+// 	db.mu.Lock()
+// 	defer db.mu.Unlock()
 
-	evnt, exists := db.data[eventID]
-	if !exists {
-		return errNotFound
-	}
+// 	evnt, exists := db.data[eventID]
+// 	if !exists {
+// 		return errNotFound
+// 	}
 
-	now := time.Now()
-	evnt.ReminderSent = true
-	evnt.ReminderSentAt = &now
-	db.data[eventID] = evnt
+// 	now := time.Now()
+// 	evnt.ReminderSent = true
+// 	evnt.ReminderSentAt = &now
+// 	db.data[eventID] = evnt
 
-	return nil
-}
+// 	return nil
+// }

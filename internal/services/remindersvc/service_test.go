@@ -31,6 +31,7 @@ func newReminderSvc(t *testing.T) *reminderSvc {
 
 func TestSendReminder(t *testing.T) {
 	svc := newReminderSvc(t)
+	ctx := context.Background()
 
 	event := &models.Event{
 		ID:       "test-1",
@@ -40,7 +41,7 @@ func TestSendReminder(t *testing.T) {
 		Reminder: true,
 	}
 
-	svc.sendReminder(event)
+	svc.sendReminder(ctx, event)
 
 	assert.True(t, true)
 }

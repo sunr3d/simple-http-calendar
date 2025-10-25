@@ -84,10 +84,14 @@ func (s *reminderSvc) handleReminder(ctx context.Context, event *models.Event) e
 }
 
 // checkPendingReminders - проверяет ожидающие напоминания из БД (фоллбэк хелпер).
-// Получает все события из БД и проверяет, если событие уже в прошлом, то оно отправляется сразу.
-// Если событие еще не наступило, то ждет и отправляет позже.
+// Получает из БД все события, у которых не был отправлен статус напоминания.
+// Если событие уже в прошлом или сейчас время совпадает с временем события,
+// то напоминание отправляется сразу, а статус отправки напоминания устанавливается в true.
 func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
-	events, err := s.repo.List(ctx, nil)
+	reminderSent := false
+	events, err := s.repo.List(ctx, &infra.ListOptions{
+		ReminderSent: &reminderSent,
+	})
 	if err != nil {
 		return fmt.Errorf("repo.List: %w", err)
 	}

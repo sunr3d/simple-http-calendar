@@ -8,10 +8,11 @@ import (
 )
 
 type ListOptions struct {
-	UserID   *int64
-	Archived *bool
-	From     *time.Time
-	To       *time.Time
+	UserID       *int64
+	Archived     *bool
+	ReminderSent *bool
+	From         *time.Time
+	To           *time.Time
 }
 
 //go:generate go run github.com/vektra/mockery/v2@v2.53.2 --name=Database --output=../../../mocks --filename=mock_database.go --with-expecter

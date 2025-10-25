@@ -1,0 +1,76 @@
+package archiversvc
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/sunr3d/simple-http-calendar/internal/config"
+	"github.com/sunr3d/simple-http-calendar/internal/interfaces/infra"
+	"github.com/sunr3d/simple-http-calendar/internal/interfaces/services"
+)
+
+var _ services.ArchiveService = (*archiveSvc)(nil)
+
+type archiveSvc struct {
+	repo     infra.Database
+	logger   *zap.Logger
+	interval time.Duration
+}
+
+func New(repo infra.Database, logger *zap.Logger, cfg config.ArchiverConfig) services.ArchiveService {
+	return &archiveSvc{
+		repo:     repo,
+		logger:   logger,
+		interval: cfg.Interval,
+	}
+}
+
+func (s *archiveSvc) Start(ctx context.Context) error {
+	s.logger.Info("запуск сервиса архивации...",
+		zap.Duration("interval", s.interval),
+	)
+
+	ticker := time.NewTicker(s.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := s.archiveOldEvents(ctx); err != nil {
+				s.logger.Warn("ошибка при архивации событий", zap.Error(err))
+				continue
+			}
+		case <-ctx.Done():
+			s.logger.Info("отмена контекста, сервис архивации остановлен")
+			return ctx.Err()
+		}
+	}
+}
+
+func (s *archiveSvc) archiveOldEvents(ctx context.Context) error {
+	archived := false
+	events, err := s.repo.List(ctx, &infra.ListOptions{
+		Archived: &archived,
+	})
+	if err != nil {
+		return fmt.Errorf("repo.List: %w", err)
+	}
+
+	now := time.Now()
+	for _, event := range events {
+		if event.Date.Before(now) {
+			event.Archived = true
+			if err := s.repo.Update(ctx, &event); err != nil {
+				s.logger.Warn("ошибка при архивации события",
+					zap.String("event_id", event.ID),
+					zap.Error(err))
+				continue
+			}
+		}
+	}
+
+	return nil
+}

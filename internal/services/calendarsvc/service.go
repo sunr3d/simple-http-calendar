@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/google/uuid"
 	"github.com/sunr3d/simple-http-calendar/internal/interfaces/infra"
 	"github.com/sunr3d/simple-http-calendar/internal/interfaces/services"
 	"github.com/sunr3d/simple-http-calendar/models"
@@ -36,8 +36,6 @@ func (s *calendarService) CreateEvent(ctx context.Context, event models.Event) (
 	if event.Text == "" {
 		return "", errEmptyEvent
 	}
-
-	/* d := time.Date(event.Date.Year(), event.Date.Month(), event.Date.Day(), 0, 0, 0, 0, time.UTC) */
 
 	id := uuid.NewString()
 	newEvent := &models.Event{
@@ -72,8 +70,6 @@ func (s *calendarService) UpdateEvent(ctx context.Context, event models.Event) e
 		return errEmptyEvent
 	}
 
-	/* d := time.Date(event.Date.Year(), event.Date.Month(), event.Date.Day(), 0, 0, 0, 0, time.UTC) */
-
 	data, err := s.repo.Read(ctx, event.ID)
 	if err != nil {
 		return fmt.Errorf("repo.Read: %w", err)
@@ -106,10 +102,18 @@ func (s *calendarService) GetEventsForDay(
 		return nil, errUserID
 	}
 
-	day := time.Date(dateRange.Year(), dateRange.Month(), dateRange.Day(), 0, 0, 0, 0, time.UTC)
-	tr := infra.TimeRange{From: day, To: day}
+	day := time.Date(dateRange.Year(), dateRange.Month(), dateRange.Day(), 0, 0, 0, 0, time.Local)
+	archived := false
 
-	return s.repo.ListByTimeRange(ctx, userID, tr)
+	return s.repo.List(
+		ctx,
+		&infra.ListOptions{
+			UserID:   &userID,
+			Archived: &archived,
+			From:     &day,
+			To:       &day,
+		},
+	)
 }
 
 func (s *calendarService) GetEventsForWeek(
@@ -121,18 +125,24 @@ func (s *calendarService) GetEventsForWeek(
 		return nil, errUserID
 	}
 
-	day := time.Date(dateRange.Year(), dateRange.Month(), dateRange.Day(), 0, 0, 0, 0, time.UTC)
-
+	day := time.Date(dateRange.Year(), dateRange.Month(), dateRange.Day(), 0, 0, 0, 0, time.Local)
 	weekday := int(day.Weekday())
 	if weekday == 0 {
 		weekday = 7
 	}
 	weekStart := day.AddDate(0, 0, -(weekday - 1))
 	weekEnd := weekStart.AddDate(0, 0, 6)
+	archived := false
 
-	tr := infra.TimeRange{From: weekStart, To: weekEnd}
-
-	return s.repo.ListByTimeRange(ctx, userID, tr)
+	return s.repo.List(
+		ctx,
+		&infra.ListOptions{
+			UserID:   &userID,
+			Archived: &archived,
+			From:     &weekStart,
+			To:       &weekEnd,
+		},
+	)
 }
 
 func (s *calendarService) GetEventsForMonth(
@@ -144,12 +154,18 @@ func (s *calendarService) GetEventsForMonth(
 		return nil, errUserID
 	}
 
-	day := time.Date(dateRange.Year(), dateRange.Month(), dateRange.Day(), 0, 0, 0, 0, time.UTC)
-
-	monthStart := time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, time.UTC)
+	day := time.Date(dateRange.Year(), dateRange.Month(), dateRange.Day(), 0, 0, 0, 0, time.Local)
+	monthStart := time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, time.Local)
 	monthEnd := monthStart.AddDate(0, 1, -1)
+	archived := false
 
-	tr := infra.TimeRange{From: monthStart, To: monthEnd}
-
-	return s.repo.ListByTimeRange(ctx, userID, tr)
+	return s.repo.List(
+		ctx,
+		&infra.ListOptions{
+			UserID:   &userID,
+			Archived: &archived,
+			From:     &monthStart,
+			To:       &monthEnd,
+		},
+	)
 }

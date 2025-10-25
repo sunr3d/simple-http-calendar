@@ -15,6 +15,7 @@ import (
 	"github.com/sunr3d/simple-http-calendar/internal/infra/inmemdb"
 	"github.com/sunr3d/simple-http-calendar/internal/middleware"
 	"github.com/sunr3d/simple-http-calendar/internal/server"
+	"github.com/sunr3d/simple-http-calendar/internal/services/archiversvc"
 	"github.com/sunr3d/simple-http-calendar/internal/services/calendarsvc"
 	"github.com/sunr3d/simple-http-calendar/internal/services/remindersvc"
 )
@@ -27,11 +28,12 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 
 	/// Инфра слой
 	repo := inmemdb.New(logger)
-	broker := inmembroker.New(cfg.ReminderChanSize, logger)
+	broker := inmembroker.New(cfg.ReminderCfg.ChanSize, logger)
 
 	/// Сервисный слой
 	calSvc := calendarsvc.New(repo, broker, logger)
 	remSvc := remindersvc.New(repo, broker, logger)
+	archSvc := archiversvc.New(repo, logger, cfg.ArchiveCfg)
 
 	/// HTTP слой
 	controller := httphandlers.New(calSvc, logger)
@@ -45,9 +47,12 @@ func Run(cfg *config.Config, logger *zap.Logger) error {
 		),
 	)
 
-	/// TODO: HTTP сервер
+	// HTTP сервер
 	srv := server.New(cfg.HTTPPort, handler, cfg.HTTPTimeout, logger)
 
-	go remSvc.Start(appCtx, cfg.ReminderInterval)
+	// Запуск сервисов и сервера
+	go remSvc.Start(appCtx, cfg.ReminderCfg.Interval)
+	go archSvc.Start(appCtx)
+
 	return srv.Start(appCtx)
 }

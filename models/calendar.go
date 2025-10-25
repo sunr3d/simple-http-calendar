@@ -10,6 +10,7 @@ type Event struct {
 	Reminder       bool       `json:"reminder"`
 	ReminderSent   bool       `json:"reminder_sent"`
 	ReminderSentAt *time.Time `json:"reminder_sent_at,omitempty"`
+	Archived       bool       `json:"archived"`
 }
 
 type EventsByDay struct {

@@ -59,34 +59,46 @@ func (s *reminderSvc) handleReminder(ctx context.Context, event *models.Event) e
 	if waitDur > 0 {
 		select {
 		case <-time.After(waitDur):
-			s.sendReminder(event)
-			if err := s.repo.UpdateReminderSent(ctx, event.ID); err != nil {
-				return fmt.Errorf("repo.UpdateReminderSent: %w", err)
-			}
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-	} else {
-		s.sendReminder(event)
-		if err := s.repo.UpdateReminderSent(ctx, event.ID); err != nil {
-			return fmt.Errorf("repo.UpdateReminderSent: %w", err)
-		}
+	}
+
+	s.sendReminder(event)
+	event.ReminderSent = true
+	sentAt := time.Now()
+	event.ReminderSentAt = &sentAt
+
+	if err := s.repo.Update(ctx, event); err != nil {
+		return fmt.Errorf("repo.Update: %w", err)
 	}
 
 	return nil
 }
 
 func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
-	events, err := s.repo.ListReminders(ctx, time.Now())
+	events, err := s.repo.List(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("repo.ListReminders: %w", err)
+		return fmt.Errorf("repo.List: %w", err)
 	}
 
+	now := time.Now()
 	for _, event := range events {
-		go func() {
-			s.sendReminder(&event)
-			_ = s.repo.UpdateReminderSent(ctx, event.ID)
-		}()
+		if event.Reminder &&
+			!event.ReminderSent &&
+			(now.After(event.Date) || now.Equal(event.Date)) {
+			go func(e models.Event) {
+				s.sendReminder(&e)
+
+				e.ReminderSent = true
+				sentAt := time.Now()
+				e.ReminderSentAt = &sentAt
+
+				if err := s.repo.Update(ctx, &e); err != nil {
+					s.logger.Warn("ошибка при обновлении статуса напоминания в БД", zap.Error(err))
+				}
+			}(event)
+		}
 	}
 
 	return nil

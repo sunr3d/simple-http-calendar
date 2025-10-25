@@ -20,6 +20,7 @@ type reminderSvc struct {
 	logger *zap.Logger
 }
 
+// New - конструктор сервиса напоминаний.
 func New(repo infra.Database, broker infra.Broker, logger *zap.Logger) services.ReminderService {
 	return &reminderSvc{
 		repo:   repo,
@@ -28,6 +29,9 @@ func New(repo infra.Database, broker infra.Broker, logger *zap.Logger) services.
 	}
 }
 
+// Start - запуск сервиса напоминаний.
+// Подписывается на канал событий брокера и проверяет ожидающие напоминания.
+// Есть фоллбэк на случай, если событие уже в прошлом, то оно отправляется сразу.
 func (s *reminderSvc) Start(ctx context.Context, interval time.Duration) error {
 	s.logger.Info("запуск сервиса напоминаний...",
 		zap.Duration("interval", interval),
@@ -54,6 +58,9 @@ func (s *reminderSvc) Start(ctx context.Context, interval time.Duration) error {
 	}
 }
 
+// handleReminder - обработчик событий брокера.
+// Проверяет, если событие уже в прошлом, то оно отправляется сразу.
+// Если событие еще не наступило, то ждет и отправляет позже.
 func (s *reminderSvc) handleReminder(ctx context.Context, event *models.Event) error {
 	waitDur := time.Until(event.Date)
 	if waitDur > 0 {
@@ -76,6 +83,9 @@ func (s *reminderSvc) handleReminder(ctx context.Context, event *models.Event) e
 	return nil
 }
 
+// checkPendingReminders - проверяет ожидающие напоминания из БД (фоллбэк хелпер).
+// Получает все события из БД и проверяет, если событие уже в прошлом, то оно отправляется сразу.
+// Если событие еще не наступило, то ждет и отправляет позже.
 func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
 	events, err := s.repo.List(ctx, nil)
 	if err != nil {
@@ -104,6 +114,7 @@ func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
 	return nil
 }
 
+// sendReminder - отправляет напоминание.
 func (s *reminderSvc) sendReminder(event *models.Event) {
 	s.logger.Info("отправлено напоминание",
 		zap.Int64("user_id", event.UserID),

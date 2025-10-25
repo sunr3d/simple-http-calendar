@@ -21,6 +21,7 @@ type calendarService struct {
 	logger *zap.Logger
 }
 
+// New - конструктор сервиса календаря.
 func New(repo infra.Database, broker infra.Broker, logger *zap.Logger) services.CalendarService {
 	return &calendarService{
 		repo:   repo,
@@ -29,6 +30,8 @@ func New(repo infra.Database, broker infra.Broker, logger *zap.Logger) services.
 	}
 }
 
+// CreateEvent - создает новое событие в календаре.
+// Если событие имеет флаг напоминания, то оно отправляется в брокер для дальнейшей обработки.
 func (s *calendarService) CreateEvent(ctx context.Context, event models.Event) (string, error) {
 	if event.UserID <= 0 {
 		return "", errUserID
@@ -59,6 +62,8 @@ func (s *calendarService) CreateEvent(ctx context.Context, event models.Event) (
 	return id, nil
 }
 
+// UpdateEvent - обновляет событие в календаре.
+// Если событие имеет флаг напоминания, то оно отправляется в брокер для дальнейшей обработки.
 func (s *calendarService) UpdateEvent(ctx context.Context, event models.Event) error {
 	if event.ID == "" {
 		return errEventID
@@ -75,14 +80,19 @@ func (s *calendarService) UpdateEvent(ctx context.Context, event models.Event) e
 		return fmt.Errorf("repo.Read: %w", err)
 	}
 
-	data.UserID = event.UserID
 	data.Date = event.Date
 	data.Text = event.Text
-	data.Reminder = event.Reminder
+	if event.Reminder {
+		data.Reminder = true
+		if err := s.broker.Publish(ctx, data); err != nil {
+			return fmt.Errorf("broker.Publish: %w", err)
+		}
+	}
 
 	return s.repo.Update(ctx, data)
 }
 
+// DeleteEvent - удаляет событие из календара.
 func (s *calendarService) DeleteEvent(ctx context.Context, eventID string) error {
 	if eventID == "" {
 		return errEventID
@@ -93,6 +103,7 @@ func (s *calendarService) DeleteEvent(ctx context.Context, eventID string) error
 	return err
 }
 
+// GetEventsForDay - получает все события для указанного дня.
 func (s *calendarService) GetEventsForDay(
 	ctx context.Context,
 	userID int64,
@@ -116,6 +127,7 @@ func (s *calendarService) GetEventsForDay(
 	)
 }
 
+// GetEventsForWeek - получает все события для указанной недели.
 func (s *calendarService) GetEventsForWeek(
 	ctx context.Context,
 	userID int64,
@@ -145,6 +157,7 @@ func (s *calendarService) GetEventsForWeek(
 	)
 }
 
+// GetEventsForMonth - получает все события для указанного месяца.
 func (s *calendarService) GetEventsForMonth(
 	ctx context.Context,
 	userID int64,

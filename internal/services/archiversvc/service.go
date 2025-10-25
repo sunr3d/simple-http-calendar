@@ -20,6 +20,7 @@ type archiveSvc struct {
 	interval time.Duration
 }
 
+// New - конструктор сервиса архивации.
 func New(repo infra.Database, logger *zap.Logger, cfg config.ArchiverConfig) services.ArchiveService {
 	return &archiveSvc{
 		repo:     repo,
@@ -28,6 +29,8 @@ func New(repo infra.Database, logger *zap.Logger, cfg config.ArchiverConfig) ser
 	}
 }
 
+// Start - запуск сервиса архивации.
+// По таймеру проверяет и архивирует события, которые уже прошли.
 func (s *archiveSvc) Start(ctx context.Context) error {
 	s.logger.Info("запуск сервиса архивации...",
 		zap.Duration("interval", s.interval),
@@ -50,6 +53,7 @@ func (s *archiveSvc) Start(ctx context.Context) error {
 	}
 }
 
+// archiveOldEvents - архивирует события, которые уже прошли.
 func (s *archiveSvc) archiveOldEvents(ctx context.Context) error {
 	archived := false
 	events, err := s.repo.List(ctx, &infra.ListOptions{

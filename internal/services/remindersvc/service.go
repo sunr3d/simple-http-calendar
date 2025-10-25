@@ -71,7 +71,8 @@ func (s *reminderSvc) handleReminder(ctx context.Context, event *models.Event) e
 		}
 	}
 
-	s.sendReminder(event)
+	s.sendReminder(ctx, event)
+
 	event.ReminderSent = true
 	sentAt := time.Now()
 	event.ReminderSentAt = &sentAt
@@ -101,17 +102,16 @@ func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
 		if event.Reminder &&
 			!event.ReminderSent &&
 			(now.After(event.Date) || now.Equal(event.Date)) {
-			go func(e models.Event) {
-				s.sendReminder(&e)
+			event.ReminderSent = true
+			sentAt := time.Now()
+			event.ReminderSentAt = &sentAt
 
-				e.ReminderSent = true
-				sentAt := time.Now()
-				e.ReminderSentAt = &sentAt
+			if err := s.repo.Update(ctx, &event); err != nil {
+				s.logger.Warn("ошибка при обновлении статуса напоминания в БД", zap.Error(err))
+				continue
+			}
 
-				if err := s.repo.Update(ctx, &e); err != nil {
-					s.logger.Warn("ошибка при обновлении статуса напоминания в БД", zap.Error(err))
-				}
-			}(event)
+			go s.sendReminder(ctx, &event)
 		}
 	}
 
@@ -119,7 +119,13 @@ func (s *reminderSvc) checkPendingReminders(ctx context.Context) error {
 }
 
 // sendReminder - отправляет напоминание.
-func (s *reminderSvc) sendReminder(event *models.Event) {
+func (s *reminderSvc) sendReminder(ctx context.Context, event *models.Event) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
 	s.logger.Info("отправлено напоминание",
 		zap.Int64("user_id", event.UserID),
 		zap.String("event_id", event.ID),

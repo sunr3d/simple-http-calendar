@@ -12,8 +12,8 @@ type asyncWriter struct {
 	writeChan chan []byte
 	output    zapcore.WriteSyncer
 	fallback  zapcore.WriteSyncer
-	wg        sync.WaitGroup
-	once      sync.Once
+	mu        sync.Mutex
+	closed    bool
 }
 
 // NewAsyncWriter - конструктор асинхронного writer для логгера zap.
@@ -22,7 +22,6 @@ func NewAsyncWriter(output, fallback zapcore.WriteSyncer, chanSize int) zapcore.
 		writeChan: make(chan []byte, chanSize),
 		output:    output,
 		fallback:  fallback,
-		wg:        sync.WaitGroup{},
 	}
 	aw.start()
 	return aw
@@ -34,11 +33,12 @@ func (w *asyncWriter) Write(p []byte) (int, error) {
 	buf := make([]byte, len(p))
 	copy(buf, p)
 
-	defer func() {
-		if r := recover(); r != nil {
-			_, _ = w.fallback.Write(p)
-		}
-	}()
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.closed {
+		return w.fallback.Write(p)
+	}
 
 	select {
 	case w.writeChan <- buf:
@@ -52,18 +52,26 @@ func (w *asyncWriter) Write(p []byte) (int, error) {
 // Закрывает канал и выводит оставшиеся данные из канала в фоллбэк.
 // (реализация zapcore.WriteSyncer).
 func (w *asyncWriter) Sync() error {
-	w.once.Do(func() {
-		close(w.writeChan)
-	})
-	w.wg.Wait()
+	w.mu.Lock()
+	if w.closed {
+		w.mu.Unlock()
+		return w.fallback.Sync()
+	}
+
+	w.closed = true
+	close(w.writeChan)
+	w.mu.Unlock()
+
+	for msg := range w.writeChan {
+		_, _ = w.output.Write(msg)
+	}
+
 	return w.fallback.Sync()
 }
 
 // start - читает данные из канал и записывает в output writer.
 func (w *asyncWriter) start() {
-	w.wg.Add(1)
 	go func() {
-		defer w.wg.Done()
 		for data := range w.writeChan {
 			_, _ = w.output.Write(data)
 		}

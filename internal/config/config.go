@@ -22,5 +22,5 @@ type ReminderConfig struct {
 }
 
 type ArchiverConfig struct {
-	Interval time.Duration `default:"10m" envconfig:"INTERVAL"`
+	Interval time.Duration `default:"10s" envconfig:"INTERVAL"`
 }

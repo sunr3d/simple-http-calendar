@@ -10,8 +10,15 @@ logs:
 test:
 	go test -v ./...
 
+test-smoke:
+	chmod +x smoke.sh
+	./smoke.sh
+
 fmt:
 	go fmt ./...
 
 build:
 	go build -o simple-http-calendar cmd/main.go
+
+lint:
+	golangci-lint run
